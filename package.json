@@ -1,0 +1,65 @@
+{
+  "name": "aws-s3",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "AWS S3 文件管理器",
+  "keywords": [
+    "electron",
+    "vue",
+    "aws",
+    "s3",
+    "file-manager",
+    "desktop"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_GITHUB_USERNAME/aws-s3.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YOUR_GITHUB_USERNAME/aws-s3/issues"
+  },
+  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/aws-s3#readme",
+  "author": "KarlXu",
+  "main": "background.js",
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint",
+    "electron:build": "vue-cli-service electron:build",
+    "electron:build:win": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ vue-cli-service electron:build --windows",
+    "electron:build:win:dir": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ vue-cli-service electron:build --windows --dir",
+    "electron:build:win:arm64": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ vue-cli-service electron:build --windows --arm64",
+    "electron:build:mac": "vue-cli-service electron:build --mac",
+    "electron:build:current": "vue-cli-service electron:build --publish never",
+    "electron:serve": "vue-cli-service electron:serve",
+    "postinstall": "electron-builder install-app-deps",
+    "postuninstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1499.0",
+    "core-js": "^3.8.3",
+    "element-ui": "^2.15.13",
+    "vue": "^2.6.14",
+    "vue-router": "^3.5.1",
+    "vuex": "^3.6.2"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~5.0.0",
+    "@vue/cli-plugin-eslint": "~5.0.0",
+    "@vue/cli-plugin-router": "~5.0.0",
+    "@vue/cli-plugin-vuex": "~5.0.0",
+    "@vue/cli-service": "~5.0.0",
+    "babel-eslint": "^10.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^22.3.27",
+    "electron-builder": "^23.6.0",
+    "electron-devtools-installer": "^3.2.0",
+    "eslint": "^7.32.0",
+    "eslint-plugin-vue": "^8.0.3",
+    "sass": "^1.32.7",
+    "sass-loader": "^12.0.0",
+    "vue-cli-plugin-electron-builder": "~2.1.1",
+    "vue-template-compiler": "^2.6.14"
+  }
+}
