@@ -64,7 +64,7 @@
       custom-class="help-dialog"
     >
       <ul class="help-list">
-        <li>在<strong>设置</strong>中可管理多个连接；填写 Key、Bucket 与多行自定义域名后保存。</li>
+        <li>在<strong>设置</strong>中可管理多个连接；填写 Key、Bucket 与可选的自定义访问域名后保存。</li>
         <li><strong>文件</strong>：按目录浏览；可用前缀搜索；支持下载、复制链接、复制对象 Key、批量删除。</li>
         <li><strong>上传</strong>：选择目标目录后拖拽或选择文件；可从文件页「上传到此目录」跳转并带上路径。</li>
         <li>凭证保存在本机用户目录，请勿在公共电脑保存敏感 Bucket。</li>

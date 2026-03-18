@@ -124,48 +124,50 @@
           </el-table-column>
           <el-table-column label="操作" width="300" fixed="right">
             <template slot-scope="scope">
-              <el-button
-                v-if="!isDirectory(scope.row)"
-                type="text"
-                size="small"
-                @click="handleDownload(scope.row)"
-              >下载</el-button>
-              <el-dropdown
-                v-if="!isDirectory(scope.row) && linkBases.length > 1"
-                trigger="click"
-                @command="cmd => copyLinkWithBase(scope.row, cmd)"
-              >
-                <el-button type="text" size="small">
-                  复制链接 <i class="el-icon-arrow-down el-icon--right" />
+              <div class="file-table-actions">
+                <el-button
+                  v-if="!isDirectory(scope.row)"
+                  type="text"
+                  size="small"
+                  @click="handleDownload(scope.row)"
+                >下载</el-button>
+                <el-dropdown
+                  v-if="!isDirectory(scope.row) && linkBases.length === 1"
+                  class="file-table-actions__dropdown"
+                  trigger="click"
+                  @command="cmd => copyLinkWithBase(scope.row, cmd)"
+                >
+                  <el-button type="text" size="small" class="btn-copy-link-menu">
+                    <span class="btn-copy-link-menu__inner">
+                      <span>复制链接</span>
+                      <i class="el-icon-arrow-down btn-copy-link-menu__caret" />
+                    </span>
+                  </el-button>
+                  <el-dropdown-menu slot="dropdown">
+                    <el-dropdown-item :command="{ type: 'cdn', base: linkBases[0] }">
+                      自定义域名链接
+                    </el-dropdown-item>
+                    <el-dropdown-item divided :command="{ type: 'signed' }">
+                      预签名 URL
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </el-dropdown>
+                <el-button
+                  v-else-if="!isDirectory(scope.row)"
+                  type="text"
+                  size="small"
+                  @click="handleCopyLink(scope.row)"
+                >复制链接</el-button>
+                <el-button type="text" size="small" @click="copyKey(scope.row)">
+                  复制 Key
                 </el-button>
-                <el-dropdown-menu slot="dropdown">
-                  <el-dropdown-item
-                    v-for="(b, i) in linkBases"
-                    :key="i"
-                    :command="{ type: 'cdn', base: b }"
-                  >
-                    {{ shortBase(b) }}
-                  </el-dropdown-item>
-                  <el-dropdown-item divided :command="{ type: 'signed' }">
-                    预签名 URL
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </el-dropdown>
-              <el-button
-                v-else-if="!isDirectory(scope.row)"
-                type="text"
-                size="small"
-                @click="handleCopyLink(scope.row)"
-              >复制链接</el-button>
-              <el-button type="text" size="small" @click="copyKey(scope.row)">
-                复制 Key
-              </el-button>
-              <el-button
-                type="text"
-                size="small"
-                class="danger-text"
-                @click="handleDelete(scope.row)"
-              >删除</el-button>
+                <el-button
+                  type="text"
+                  size="small"
+                  class="danger-text"
+                  @click="handleDelete(scope.row)"
+                >删除</el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -269,7 +271,7 @@ export default {
       const start = (this.currentPage - 1) * this.pageSize
       return this.sortedRows.slice(start, start + this.pageSize)
     },
-    /** 多个自定义域名时展开下拉 */
+    /** 至多一个自定义域名基础 URL */
     linkBases() {
       const b = this.awsConfig.baseUrls || this.awsConfig.cdnBaseUrls || []
       return Array.isArray(b) ? b.filter(Boolean) : []
@@ -505,11 +507,6 @@ export default {
       } catch (e) {
         this.$message.error('复制失败：' + e.message)
       }
-    },
-    shortBase(b) {
-      const s = String(b || '')
-      if (s.length <= 42) return s
-      return s.slice(0, 40) + '…'
     },
     async copyKey(row) {
       try {
@@ -748,6 +745,41 @@ export default {
 
 .danger-text {
   color: #f56c6c;
+}
+
+/* 操作列：flex 统一垂直居中，避免下拉与文字按钮基线不齐 */
+.file-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 4px;
+}
+
+.file-table-actions >>> .el-button {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.file-table-actions__dropdown {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+/* 文字与箭头同一行垂直居中（与默认 el-icon--right 错位区分开） */
+.btn-copy-link-menu__inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+}
+
+.btn-copy-link-menu__caret {
+  margin: 0 !important;
+  font-size: 12px;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .pagination-wrap {

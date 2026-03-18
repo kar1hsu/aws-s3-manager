@@ -9,7 +9,7 @@ export const emptyProfile = () => ({
   secretAccessKey: '',
   region: 'us-east-1',
   bucketName: '',
-  /** 自定义访问基础 URL 列表，复制链接时用；第一项也可单独理解为「主域名」 */
+  /** 自定义访问基础 URL，至多一项（复制链接时拼接对象 Key） */
   cdnBaseUrls: []
 })
 
@@ -47,7 +47,7 @@ function normalizeCdnList(raw) {
   }
   const legacy = (raw.url || '').trim().replace(/\/$/, '')
   if (legacy && !list.includes(legacy)) list.unshift(legacy)
-  return list
+  return list.length ? [list[0]] : []
 }
 
 function normalizeProfile(p) {

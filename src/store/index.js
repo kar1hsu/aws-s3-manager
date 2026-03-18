@@ -90,7 +90,7 @@ export default new Vuex.Store({
       dispatch('initS3')
     },
 
-    /** 保存当前正在编辑的连接（含多行域名） */
+    /** 保存当前正在编辑的连接（自定义域名至多一项） */
     async saveActiveProfile(
       { state, dispatch },
       { accessKeyId, secretAccessKey, region, bucketName, name, cdnBaseUrls }
@@ -99,7 +99,7 @@ export default new Vuex.Store({
       const idx = findIndex(profiles, state.activeProfileId)
       if (idx < 0) throw new Error('未找到当前连接')
       const bases = Array.isArray(cdnBaseUrls)
-        ? cdnBaseUrls.map(u => String(u).trim().replace(/\/$/, '')).filter(Boolean)
+        ? cdnBaseUrls.map(u => String(u).trim().replace(/\/$/, '')).filter(Boolean).slice(0, 1)
         : []
       profiles[idx] = {
         ...profiles[idx],

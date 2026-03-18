@@ -2,7 +2,7 @@
   <div class="page-config">
     <div class="page-head">
       <h1 class="page-title">连接设置</h1>
-      <p class="page-desc">支持多个 AWS 连接；自定义域名可填多行，复制链接时可选。</p>
+      <p class="page-desc">支持多个 AWS 连接；可选填一个自定义访问域名用于复制公开链接。</p>
     </div>
 
     <el-card class="config-card" shadow="hover" v-loading="!configLoaded">
@@ -40,7 +40,7 @@
         </el-button>
       </div>
 
-      <el-form ref="form" :model="form" label-width="140px" class="config-form">
+      <el-form ref="form" :model="form" label-width="178px" class="config-form">
         <el-form-item label="连接名称">
           <el-input v-model="form.name" placeholder="便于区分，如：生产 Bucket" clearable />
         </el-form-item>
@@ -83,13 +83,12 @@
         </el-form-item>
         <el-form-item label="自定义访问域名">
           <el-input
-            v-model="form.cdnUrlsText"
-            type="textarea"
-            :rows="4"
-            placeholder="每行一个基础 URL，例如：https://cdn.example.com;https://d111111.cloudfront.net"
+            v-model="form.cdnBaseUrl"
+            placeholder="例如：https://cdn.example.com 或 CloudFront 域名（可选）"
+            clearable
           />
           <div class="form-tip">
-            用于「复制链接」时拼接对象 Key；可填多个 CDN/域名。不填则仅可复制 S3 预签名链接。
+            用于「复制链接」时拼接为「域名/对象 Key」。不填则复制 S3 预签名链接。仅支持填写一个基础 URL。
           </div>
         </el-form-item>
         <el-form-item>
@@ -131,7 +130,7 @@ export default {
         secretAccessKey: '',
         region: 'us-east-1',
         bucketName: '',
-        cdnUrlsText: ''
+        cdnBaseUrl: ''
       },
       testing: false,
       saving: false,
@@ -178,7 +177,7 @@ export default {
         secretAccessKey: p.secretAccessKey || '',
         region: p.region || 'us-east-1',
         bucketName: p.bucketName || '',
-        cdnUrlsText: (p.cdnBaseUrls || []).join('\n')
+        cdnBaseUrl: (p.cdnBaseUrls && p.cdnBaseUrls[0]) || p.url || ''
       }
     },
     async onSwitchProfile(id) {
@@ -255,10 +254,8 @@ export default {
         this.$message.warning('请填写 Access Key、Secret、区域与 Bucket')
         return
       }
-      const cdnBaseUrls = this.form.cdnUrlsText
-        .split('\n')
-        .map(s => s.trim().replace(/\/$/, ''))
-        .filter(Boolean)
+      const one = (this.form.cdnBaseUrl || '').trim().replace(/\/$/, '')
+      const cdnBaseUrls = one ? [one] : []
 
       this.saving = true
       try {
@@ -342,8 +339,13 @@ export default {
 }
 
 .config-form {
-  max-width: 640px;
+  max-width: 720px;
   padding: 8px 0 16px;
+}
+
+.config-form >>> .el-form-item__label {
+  white-space: nowrap;
+  line-height: 36px;
 }
 
 .form-tip {
