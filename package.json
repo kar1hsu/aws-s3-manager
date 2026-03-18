@@ -14,12 +14,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_GITHUB_USERNAME/aws-s3.git"
+    "url": "https://github.com/kar1hsu/aws-s3-manager"
   },
   "bugs": {
-    "url": "https://github.com/YOUR_GITHUB_USERNAME/aws-s3/issues"
+    "url": "https://github.com/kar1hsu/aws-s3-manager/issues"
   },
-  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/aws-s3#readme",
+  "homepage": "https://github.com/kar1hsu/aws-s3-manager#readme",
   "author": "KarlXu",
   "main": "background.js",
   "scripts": {
