@@ -111,6 +111,7 @@
 <script>
 import AWS from 'aws-sdk'
 import { mapGetters } from 'vuex'
+import { resolveS3UploadBody } from '@/utils/upload-body'
 
 export default {
   name: 'UploadFile',
@@ -263,11 +264,12 @@ export default {
           this.currentFileName = file.name
           this.uploadStatusText = `上传中 ${i + 1}/${this.totalFiles}`
           try {
+            const body = await resolveS3UploadBody(file.raw)
             await this.s3
               .upload({
                 Bucket: this.awsConfig.bucketName,
                 Key: prefix + file.name,
-                Body: file.raw
+                Body: body
               })
               .promise()
             this.uploadedCount++
@@ -275,7 +277,11 @@ export default {
               (this.uploadedCount / this.totalFiles) * 100
             )
           } catch (err) {
-            failed.push({ name: file.name, err: err.message })
+            const detail =
+              err.code && err.message
+                ? `${err.code}: ${err.message}`
+                : err.message || String(err)
+            failed.push({ name: file.name, err: detail })
           }
         }
 
@@ -287,8 +293,10 @@ export default {
         } else {
           this.uploadStatus = 'exception'
           this.uploadStatusText = `${failed.length} 个失败`
+          const first = failed[0]
           this.$message.error(
-            '部分失败：' + failed.map(f => f.name).join(', ')
+            `部分失败（${failed.length} 个）：${first.name} — ${first.err}` +
+              (failed.length > 1 ? ' …' : '')
           )
         }
       } catch (e) {
