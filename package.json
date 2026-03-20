@@ -21,17 +21,22 @@
   },
   "homepage": "https://github.com/kar1hsu/aws-s3-manager#readme",
   "author": "KarlXu",
+  "overrides": {
+    "vue-cli-plugin-electron-builder": {
+      "electron-builder": "23.6.0"
+    }
+  },
   "main": "background.js",
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "electron:build": "vue-cli-service electron:build",
+    "electron:build": "cross-env PYTHON_PATH=/usr/bin/python3 vue-cli-service electron:build",
     "electron:build:win": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ vue-cli-service electron:build --windows",
     "electron:build:win:dir": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ vue-cli-service electron:build --windows --dir",
     "electron:build:win:arm64": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ vue-cli-service electron:build --windows --arm64",
-    "electron:build:mac": "vue-cli-service electron:build --mac",
-    "electron:build:current": "vue-cli-service electron:build --publish never",
+    "electron:build:mac": "cross-env PYTHON_PATH=/usr/bin/python3 vue-cli-service electron:build --mac",
+    "electron:build:current": "cross-env PYTHON_PATH=/usr/bin/python3 vue-cli-service electron:build --publish never",
     "electron:serve": "vue-cli-service electron:serve",
     "postinstall": "electron-builder install-app-deps",
     "postuninstall": "electron-builder install-app-deps"

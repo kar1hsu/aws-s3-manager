@@ -20,11 +20,16 @@ window.addEventListener('unhandledrejection', event => {
   event.preventDefault()
 })
 
-// 确保DOM完全加载后再挂载Vue实例
-document.addEventListener('DOMContentLoaded', () => {
+// 勿仅用 DOMContentLoaded：生产分包若晚于该事件执行，监听不会触发 → 白屏
+function mountApp () {
   new Vue({
     router,
     store,
     render: h => h(App)
   }).$mount('#app')
-}) 
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mountApp)
+} else {
+  mountApp()
+} 

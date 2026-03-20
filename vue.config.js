@@ -34,7 +34,7 @@ module.exports = {
         },
         mac: {
           icon: 'public/icon.icns',
-          // 仅打 dmg，避免 zip 的 blockmap 步骤依赖已移除的 /usr/bin/python
+          // 仅打 dmg；package.json overrides 统一 electron-builder@23，dmg 脚本兼容 Python 3；脚本仍设 PYTHON_PATH 指向 python3
           target: ['dmg'],
           category: 'public.app-category.utilities'
         },
@@ -67,9 +67,6 @@ module.exports = {
     node: {
       __dirname: false,
       __filename: false
-    },
-    externals: {
-      'aws-sdk': 'commonjs aws-sdk'
     }
   }
 } 

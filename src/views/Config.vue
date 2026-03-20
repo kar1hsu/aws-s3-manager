@@ -88,7 +88,7 @@
             clearable
           />
           <div class="form-tip">
-            用于「复制链接」时拼接为「域名/对象 Key」。不填则复制 S3 预签名链接。仅支持填写一个基础 URL。
+            用于「复制链接」时拼接为「域名/对象 Key」（无预签名参数）。不填则复制标准 S3 对象 URL（https://桶.s3.区域.amazonaws.com/…）。仅支持填写一个基础 URL。
           </div>
         </el-form-item>
         <el-form-item>

@@ -132,10 +132,10 @@
                   @click="handleDownload(scope.row)"
                 >下载</el-button>
                 <el-dropdown
-                  v-if="!isDirectory(scope.row) && linkBases.length === 1"
+                  v-if="!isDirectory(scope.row) && linkBases.length > 1"
                   class="file-table-actions__dropdown"
                   trigger="click"
-                  @command="cmd => copyLinkWithBase(scope.row, cmd)"
+                  @command="base => copyCdnBaseLink(scope.row, base)"
                 >
                   <el-button type="text" size="small" class="btn-copy-link-menu">
                     <span class="btn-copy-link-menu__inner">
@@ -144,19 +144,26 @@
                     </span>
                   </el-button>
                   <el-dropdown-menu slot="dropdown">
-                    <el-dropdown-item :command="{ type: 'cdn', base: linkBases[0] }">
-                      自定义域名链接
-                    </el-dropdown-item>
-                    <el-dropdown-item divided :command="{ type: 'signed' }">
-                      预签名 URL
+                    <el-dropdown-item
+                      v-for="(base, i) in linkBases"
+                      :key="'cdn-' + i"
+                      :command="base"
+                    >
+                      自定义域名（{{ linkBaseMenuLabel(base) }}）
                     </el-dropdown-item>
                   </el-dropdown-menu>
                 </el-dropdown>
                 <el-button
+                  v-else-if="!isDirectory(scope.row) && linkBases.length === 1"
+                  type="text"
+                  size="small"
+                  @click="copyCdnBaseLink(scope.row, linkBases[0])"
+                >复制链接</el-button>
+                <el-button
                   v-else-if="!isDirectory(scope.row)"
                   type="text"
                   size="small"
-                  @click="handleCopyLink(scope.row)"
+                  @click="handleCopyPlainS3Link(scope.row)"
                 >复制链接</el-button>
                 <el-button type="text" size="small" @click="copyKey(scope.row)">
                   复制 Key
@@ -217,7 +224,8 @@ import {
   listFolderContents,
   searchByPrefix,
   deleteAllUnderPrefix,
-  copyToClipboard
+  copyToClipboard,
+  buildPublicS3ObjectUrl
 } from '@/utils/s3-helpers'
 
 export default {
@@ -473,37 +481,35 @@ export default {
       }
       return mime[ext] || 'application/octet-stream'
     },
-    async handleCopyLink(file) {
+    /** 未配置自定义域名时：复制标准 S3 对象 URL（无 X-Amz 预签名参数） */
+    async handleCopyPlainS3Link(file) {
       try {
-        const bases = this.linkBases
-        let url
-        if (bases.length === 1) {
-          url = `${bases[0].replace(/\/$/, '')}/${file.Key}`
-        } else {
-          url = await this.s3.getSignedUrlPromise('getObject', {
-            Bucket: this.awsConfig.bucketName,
-            Key: file.Key
-          })
-        }
+        const url = buildPublicS3ObjectUrl(
+          this.awsConfig.bucketName,
+          this.awsConfig.region || 'us-east-1',
+          file.Key
+        )
         await copyToClipboard(url)
-        this.$message.success('已复制')
+        this.$message.success('已复制链接')
       } catch (e) {
         this.$message.error('复制失败：' + e.message)
       }
     },
-    async copyLinkWithBase(file, cmd) {
+    linkBaseMenuLabel(base) {
+      const s = String(base || '').trim()
+      if (!s) return '—'
       try {
-        let url
-        if (cmd.type === 'signed') {
-          url = await this.s3.getSignedUrlPromise('getObject', {
-            Bucket: this.awsConfig.bucketName,
-            Key: file.Key
-          })
-        } else {
-          url = `${String(cmd.base).replace(/\/$/, '')}/${file.Key}`
-        }
+        const u = new URL(/^https?:\/\//i.test(s) ? s : `https://${s}`)
+        return u.hostname || s.slice(0, 40)
+      } catch {
+        return s.replace(/^https?:\/\//, '').split('/')[0].slice(0, 40) || s.slice(0, 40)
+      }
+    },
+    async copyCdnBaseLink(file, base) {
+      try {
+        const url = `${String(base).replace(/\/$/, '')}/${file.Key}`
         await copyToClipboard(url)
-        this.$message.success('已复制')
+        this.$message.success('已复制链接')
       } catch (e) {
         this.$message.error('复制失败：' + e.message)
       }

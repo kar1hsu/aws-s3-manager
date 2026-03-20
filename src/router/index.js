@@ -31,9 +31,14 @@ const routes = [
   }
 ]
 
-// Electron 打包后使用 app:// 或 file://，history 模式会白屏，需 hash
+// Electron 下须用 hash；勿只依赖 IS_ELECTRON（Define 未注入时会误用 history → 白屏）
+const isElectron =
+  typeof process !== 'undefined' &&
+  process.versions &&
+  !!process.versions.electron
+
 const router = new VueRouter({
-  mode: process.env.IS_ELECTRON ? 'hash' : 'history',
+  mode: isElectron || process.env.IS_ELECTRON ? 'hash' : 'history',
   routes
 })
 

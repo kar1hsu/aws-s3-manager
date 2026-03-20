@@ -103,6 +103,27 @@ export async function deleteAllUnderPrefix(s3, bucket, prefix) {
   await deleteObjectKeys(s3, bucket, allKeys)
 }
 
+/**
+ * 标准 S3 对象 HTTPS URL（无预签名查询串），虚拟主机样式。
+ * 对象未对匿名公开时，浏览器直接打开会 403，仅表示「桶内对象的规范链接」。
+ */
+export function buildPublicS3ObjectUrl(bucket, region, key) {
+  const path = String(key || '')
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/')
+  const r = region || 'us-east-1'
+  let host
+  if (/^cn-/.test(r)) {
+    host = `${bucket}.s3.${r}.amazonaws.com.cn`
+  } else if (r === 'us-east-1') {
+    host = `${bucket}.s3.amazonaws.com`
+  } else {
+    host = `${bucket}.s3.${r}.amazonaws.com`
+  }
+  return `https://${host}/${path}`
+}
+
 export async function copyToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
     return navigator.clipboard.writeText(text)

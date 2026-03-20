@@ -8,6 +8,11 @@ import fs from 'fs'
 import os from 'os'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
+/** 打包版是否启动时打开开发者工具：命令行传 --devtools 或环境变量 ELECTRON_OPEN_DEVTOOLS=1 */
+const wantPackedDevTools =
+  process.argv.includes('--devtools') ||
+  process.env.ELECTRON_OPEN_DEVTOOLS === '1'
+
 // 设置应用名称
 app.name = 'AWS S3 文件管理器'
 
@@ -84,6 +89,20 @@ async function createWindow() {
       })
     })
 
+    // 打包后无默认菜单时仍可用快捷键开关开发者工具：F12 / Ctrl+Shift+I / Cmd+Option+I
+    win.webContents.on('before-input-event', (event, input) => {
+      if (!input.isKeyDown || input.isAutoRepeat) return
+      const k = input.key.toLowerCase()
+      const toggle =
+        input.key === 'F12' ||
+        (input.control && input.shift && k === 'i') ||
+        (input.meta && input.alt && k === 'i')
+      if (toggle) {
+        event.preventDefault()
+        win.webContents.toggleDevTools()
+      }
+    })
+
     // 打开开发者工具调试
     if (process.env.WEBPACK_DEV_SERVER_URL) {
       // Load the url of the dev server if in development mode
@@ -112,6 +131,9 @@ async function createWindow() {
             `无法加载界面。\n${error.message}\n${fileError.message}`
           )
         }
+      }
+      if (wantPackedDevTools) {
+        win.webContents.openDevTools({ mode: 'detach' })
       }
     }
 
