@@ -1,6 +1,7 @@
 /**
  * Electron + Node aws-sdk 下，el-upload 的 File/Blob 不能直接作为 S3 Body。
- * 优先用本地路径流式上传；否则读入 Buffer。
+ * webpack 打包 aws-sdk 会走 browser 入口（isNode()=false），ManagedUpload
+ * 不支持 Node stream，因此必须返回 Buffer（有 .slice），不能用 createReadStream。
  */
 export async function resolveS3UploadBody(raw) {
   if (!raw) {
@@ -31,7 +32,9 @@ export async function resolveS3UploadBody(raw) {
     try {
       const fs = req('fs')
       if (fs.existsSync(p)) {
-        return fs.createReadStream(p)
+        return await new Promise((resolve, reject) => {
+          fs.readFile(p, (err, buf) => (err ? reject(err) : resolve(buf)))
+        })
       }
     } catch (e) {
       /* 继续走内存 */
