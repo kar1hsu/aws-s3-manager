@@ -15,6 +15,8 @@ function findIndex(profiles, id) {
   return profiles.findIndex(p => p.id === id)
 }
 
+let _configLoadPromise = null
+
 export default new Vuex.Store({
   state: {
     profiles: [],
@@ -67,19 +69,24 @@ export default new Vuex.Store({
     }
   },
   actions: {
-    async loadAwsConfig({ commit }) {
-      try {
-        const raw = await readAppConfig()
-        const { profiles, activeProfileId } = migrateFromDisk(raw)
-        commit('setProfilesState', { profiles, activeProfileId })
-        commit('initS3Instance')
-      } catch (e) {
-        console.error('加载配置失败:', e)
-        const p = emptyProfile()
-        commit('setProfilesState', { profiles: [p], activeProfileId: p.id })
-      } finally {
-        commit('setConfigLoaded', true)
-      }
+    loadAwsConfig({ commit, state }) {
+      if (state.configLoaded) return Promise.resolve()
+      if (_configLoadPromise) return _configLoadPromise
+      _configLoadPromise = (async () => {
+        try {
+          const raw = await readAppConfig()
+          const { profiles, activeProfileId } = migrateFromDisk(raw)
+          commit('setProfilesState', { profiles, activeProfileId })
+          commit('initS3Instance')
+        } catch (e) {
+          console.error('加载配置失败:', e)
+          const p = emptyProfile()
+          commit('setProfilesState', { profiles: [p], activeProfileId: p.id })
+        } finally {
+          commit('setConfigLoaded', true)
+        }
+      })()
+      return _configLoadPromise
     },
 
     async persistProfiles({ state, commit, dispatch }, { profiles, activeProfileId }) {

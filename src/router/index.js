@@ -42,18 +42,19 @@ const router = new VueRouter({
   routes
 })
 
-// 路由守卫，确保AWS配置已完成
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const requiresConfig = to.matched.some(record => record.meta.requiresConfig)
-  const isConfigured = store.getters.isConfigured
-  
-  if (requiresConfig && !isConfigured) {
-    // 如果路由需要配置，但配置不完整，则重定向到配置页面
-    Vue.prototype.$message.warning('请先完成AWS配置')
-    next({ path: '/config' })
-  } else {
-    next()
+  if (requiresConfig) {
+    if (!store.getters.configLoaded) {
+      await store.dispatch('loadAwsConfig')
+    }
+    if (!store.getters.isConfigured) {
+      Vue.prototype.$message.warning('请先完成AWS配置')
+      next({ path: '/config' })
+      return
+    }
   }
+  next()
 })
 
 export default router 
