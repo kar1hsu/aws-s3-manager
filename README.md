@@ -6,13 +6,26 @@
 
 ## 下载与安装（0.2.0）
 
-从 [v0.2.0 Release](https://github.com/kar1hsu/aws-s3-manager/releases/tag/v0.2.0) 下载 macOS DMG。此版本安装包适用于 **Apple Silicon（M1/M2/M3/M4 等）和 macOS 13+**，不适用于 Intel Mac。
+从 [v0.2.0 Release](https://github.com/kar1hsu/aws-s3-manager/releases/tag/v0.2.0) 下载与电脑架构对应的安装包。Mac 均要求 **macOS 13 Ventura 或以上**：
+
+- **Apple Silicon（M 系列芯片）**：选择文件名以 `arm64.dmg` 结尾的安装包。
+- **Intel Mac**：选择文件名以 `x64.dmg` 结尾的安装包；不要下载 Apple Silicon 版本。
+- **Windows 10 / 11（x64 或 ARM64）**：选择 `aws-s3-manager-0.2.0-windows-x64-arm64-setup.exe`；同一安装器包含两种架构，会根据系统选择。
+
+### macOS 安装
 
 1. 退出旧版应用，打开 DMG，将「AWS S3 文件管理器」拖入「应用程序」。
 2. 已有安装可替换应用；连接配置仍保存在原来的 `~/.aws-s3-manager-config.json`，无需随应用删除。
 3. 启动后，侧栏底部版本应显示 **0.2.0**。配置只在顶部切换，不再在侧栏重复显示存储桶。
 
-安装包经过开发证书签名和完整性校验，但**未经过 Apple 公证**，首次打开可能被 Gatekeeper 阻止。确认下载来源和 Release 中的 SHA-256 后，可在「系统设置 → 隐私与安全性」允许本应用；不要关闭系统安全检查。此 Release 未提供 Windows 或 Intel Mac 安装包。
+macOS 安装包使用开发证书签名，但**未经过 Apple 公证**，首次打开可能被 Gatekeeper 阻止。确认下载来源和 Release 中的 SHA-256 后，可在「系统设置 → 隐私与安全性」允许本应用；不要关闭系统安全检查。
+
+### Windows 安装
+
+1. 退出旧版应用，运行 `aws-s3-manager-0.2.0-windows-x64-arm64-setup.exe`，按安装向导选择目录并完成安装。
+2. 从开始菜单或桌面快捷方式启动；连接配置保存在 `%USERPROFILE%\.aws-s3-manager-config.json`，更新应用时无需删除。
+
+Windows 安装器**未签名**，SmartScreen 可能显示未知发布者或风险提示。请先核对下载来源和 Release 中的 SHA-256；无法确认时不要运行，不要关闭 SmartScreen 或防病毒保护。Windows 包在 macOS 上交叉构建，**尚未完成 Windows 实机安装与运行验证**。
 
 ### 0.2.0 更新
 
@@ -50,7 +63,10 @@
 
 - Node.js 22.12+（Electron 45 的开发依赖要求，测试使用 Node 内置测试运行器）
 - npm 或 yarn
-- macOS 安装包要求 macOS 13 Ventura 或以上；当前生成的是 Apple Silicon / arm64 版本
+- macOS 安装包要求 macOS 13 Ventura 或以上，分别提供 Apple Silicon / arm64 与 Intel / x64 版本
+- Windows 安装包面向 Windows 10 / 11 的 x64 和 ARM64 系统；不提供 32 位版本，不支持 Windows 7 / 8 / 8.1，参见 [Electron 官方系统兼容变更](https://www.electronjs.org/docs/latest/breaking-changes#removed-windows-7--8--81-support)
+
+安装预编译应用不需要另行安装 Node.js 或 npm；以上开发依赖仅用于开发、测试和自行构建。
 
 ## 开发
 
@@ -113,12 +129,15 @@ AWS_S3_SMOKE_DIST=dist_electron/bundled npm run test:ui
 ## 构建安装包
 
 ```bash
-npm run electron:build:current   # 当前平台
-npm run electron:build:mac       # macOS DMG
-npm run electron:build:win       # Windows
+npm run electron:build:current                     # 当前平台与架构
+npm run electron:build:mac -- --arm64 --publish never  # Apple Silicon DMG
+npm run electron:build:mac -- --x64 --publish never    # Intel Mac DMG
+npm run electron:build:win -- --x64 --arm64 --publish never  # Windows 双架构 NSIS 安装包
 ```
 
 产物目录：`dist_electron/`。
+
+Mac 的两种架构分别生成 DMG；Windows 的 x64 与 ARM64 合并为一个 NSIS 安装器。跨平台构建成功不等于目标系统实机验证；发布前应分别检查架构、签名状态、产物安全及实际安装运行。
 
 ### macOS：DMG 与 Python
 
@@ -146,9 +165,14 @@ npm run electron:build:win       # Windows
 
 Desktop **AWS S3** manager (Electron + Vue 3 + Element Plus). **Searchable profile switching**, **custom CDN base URL**, browse/upload/download/delete.
 
-**Download:** [v0.2.0](https://github.com/kar1hsu/aws-s3-manager/releases/tag/v0.2.0) — Apple Silicon / macOS 13+. Development-signed, not Apple-notarized. Existing local connection settings are preserved.
+**Download:** [v0.2.0](https://github.com/kar1hsu/aws-s3-manager/releases/tag/v0.2.0). On macOS 13+, choose `arm64.dmg` for Apple Silicon or `x64.dmg` for Intel. Open the DMG and drag the app into Applications. Both Mac builds are development-signed, not Apple-notarized; verify the source and release SHA-256 before allowing the app through macOS Privacy & Security. Do not disable system security checks. Existing local connection settings are preserved.
 
-**Config:** `~/.aws-s3-manager-config.json` (v2 format with `profiles`).  
-**Develop:** `npm run electron:serve` · **Build:** `npm run electron:build:current`
+**Windows:** Windows 10 / 11, x64 or ARM64. `aws-s3-manager-0.2.0-windows-x64-arm64-setup.exe` contains both architectures and selects the appropriate one during installation. Run the installer and follow the setup wizard. It is **unsigned**, so SmartScreen may warn about an unknown publisher. Verify the download source and release SHA-256; do not disable SmartScreen or antivirus protection. These packages were cross-built on macOS and **have not been installation- or runtime-tested on a Windows machine**.
+
+**Config:** `~/.aws-s3-manager-config.json` (v2 format with `profiles`). On Windows: `%USERPROFILE%\.aws-s3-manager-config.json`.
+
+**Develop:** Node.js 22.12+, then `npm install` and `npm run electron:serve`. Prebuilt apps do not require Node.js.
+
+**Build:** `npm run electron:build:mac -- --arm64 --publish never` or `--x64` for Mac; `npm run electron:build:win -- --x64 --arm64 --publish never` for the combined Windows installer.
 
 **License:** MIT. Rotate keys if credentials or config files leak.

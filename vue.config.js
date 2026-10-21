@@ -69,7 +69,7 @@ module.exports = {
           category: 'public.app-category.utilities'
         },
         win: {
-          icon: 'public/icon.png',
+          icon: 'public/icon.ico',
           target: [
             {
               target: 'nsis',
@@ -82,9 +82,9 @@ module.exports = {
           oneClick: false,
           allowToChangeInstallationDirectory: true,
           perMachine: false,
-          installerIcon: 'public/icon.png',
-          uninstallerIcon: 'public/icon.png',
-          installerHeaderIcon: 'public/icon.png',
+          installerIcon: 'public/icon.ico',
+          uninstallerIcon: 'public/icon.ico',
+          installerHeaderIcon: 'public/icon.ico',
           createDesktopShortcut: true,
           createStartMenuShortcut: true,
           shortcutName: 'AWS S3 文件管理器'
