@@ -1,0 +1,6 @@
+Generated with the built-in image_gen tool. Final PNG: 256 x 256 with alpha.
+The ICNS preserves the original 32, 64 and 128 pixel representations.
+High-resolution source: app-icon-source.png.
+
+Prompt:
+Use case: logo-brand. Asset type: desktop app icon for an S3 cloud file manager, replacing a 256 x 256 PNG and macOS icon. Primary request: create a polished, original cloud-storage app icon, a single sculptural warm-orange cloud with an integrated simple folder shape and clean white upward arrow cutout, inspired by the existing orange cloud theme. Style: restrained premium macOS icon craftsmanship, soft beveled edges, subtle depth, minimal shading, crisp silhouette that stays readable when reduced to 32 pixels. Composition: exactly square canvas, one centered icon filling about 82 percent of width with balanced transparent padding; no surrounding tile or scene. Color: warm orange with a white arrow, consistent with the existing orange cloud app branding. Background: real alpha transparency, no checkerboard baked in. No words, letters, numbers, logos, watermark, intricate ornament, or small details. Produce a high-resolution square source suitable for a final exact 256 x 256 export.

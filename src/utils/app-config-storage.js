@@ -1,35 +1,23 @@
 /**
- * 读写应用配置：Electron 下用 IPC（与 preload 无关，兼容 contextIsolation: false）
+ * 读写应用配置：Electron 下只使用隔离 preload 提供的有限接口。
  * 纯浏览器 dev 时用 localStorage
  */
 
-function getIpcRenderer() {
-  try {
-    if (typeof window !== 'undefined' && typeof window.require === 'function') {
-      return window.require('electron').ipcRenderer
-    }
-    // eslint-disable-next-line no-undef
-    if (typeof require !== 'undefined') {
-      // eslint-disable-next-line no-undef
-      return require('electron').ipcRenderer
-    }
-  } catch (e) {
-    /* 非 Electron 环境 */
+function getConfigBridge() {
+  if (typeof window === 'undefined') return null
+  const bridge = window.electron && window.electron.config
+  if (bridge) return bridge
+  // Electron preload 加载异常时不能悄悄改存浏览器缓存，避免造成配置丢失的假象。
+  if (window.location.protocol === 'app:' || /Electron\//.test(window.navigator.userAgent)) {
+    throw new Error('应用配置接口未加载，请重启应用')
   }
   return null
 }
 
 export async function readAppConfig() {
-  const ipc = getIpcRenderer()
-  if (ipc) {
-    try {
-      return await ipc.invoke('readConfig')
-    } catch (e) {
-      console.error('readConfig IPC:', e)
-    }
-  }
-  if (typeof window !== 'undefined' && window.electron && window.electron.config) {
-    return window.electron.config.readConfig()
+  const configBridge = getConfigBridge()
+  if (configBridge) {
+    return configBridge.readConfig()
   }
   try {
     const raw = localStorage.getItem('aws-s3-manager-config')
@@ -40,14 +28,11 @@ export async function readAppConfig() {
 }
 
 export async function saveAppConfig(config) {
-  const ipc = getIpcRenderer()
-  if (ipc) {
-    const ok = await ipc.invoke('saveConfig', config)
-    if (ok) return true
-    throw new Error('写入配置文件失败')
-  }
-  if (typeof window !== 'undefined' && window.electron && window.electron.config) {
-    const ok = await window.electron.config.saveConfig(config)
+  const configBridge = getConfigBridge()
+  if (configBridge) {
+    // Vue 响应式对象不能经 structured clone 发送，先转换成纯数据。
+    const plainConfig = JSON.parse(JSON.stringify(config))
+    const ok = await configBridge.saveConfig(plainConfig)
     if (ok) return true
     throw new Error('写入配置文件失败')
   }

@@ -4,7 +4,7 @@ module.exports = {
     node: true
   },
   extends: [
-    'plugin:vue/essential',
+    'plugin:vue/vue3-essential',
     'eslint:recommended'
   ],
   parserOptions: {
@@ -16,4 +16,4 @@ module.exports = {
     'vue/multi-word-component-names': 'off',
     'no-unused-vars': ['error', { 'args': 'none' }]
   }
-} 
+}

@@ -1,6 +1,6 @@
-import Vue from 'vue'
-import Vuex from 'vuex'
-import AWS from 'aws-sdk'
+import { markRaw } from 'vue'
+import { createStore } from 'vuex'
+import { createS3Client } from '@/utils/s3-client'
 import { readAppConfig, saveAppConfig } from '@/utils/app-config-storage'
 import {
   migrateFromDisk,
@@ -9,23 +9,37 @@ import {
   emptyProfile
 } from './config-migrate'
 
-Vue.use(Vuex)
-
 function findIndex(profiles, id) {
   return profiles.findIndex(p => p.id === id)
 }
 
 let _configLoadPromise = null
 
-export default new Vuex.Store({
+export default createStore({
   state: {
     profiles: [],
     activeProfileId: '',
     s3Instance: null,
     isConfigured: false,
-    configLoaded: false
+    configLoaded: false,
+    browsingPaths: {},
+    busyOperation: false,
+    hasPendingUploads: false,
+    switchingProfile: false
   },
   mutations: {
+    rememberDirectory(state, path) {
+      state.browsingPaths[state.activeProfileId] = path
+    },
+    setBusyOperation(state, busy) {
+      state.busyOperation = busy
+    },
+    setPendingUploads(state, pending) {
+      state.hasPendingUploads = pending
+    },
+    setProfileSwitching(state, switching) {
+      state.switchingProfile = switching
+    },
     setProfilesState(state, { profiles, activeProfileId }) {
       state.profiles = profiles.map(p => ({ ...p, cdnBaseUrls: [...(p.cdnBaseUrls || [])] }))
       state.activeProfileId = activeProfileId || (profiles[0] && profiles[0].id) || ''
@@ -51,14 +65,7 @@ export default new Vuex.Store({
           ap.region &&
           ap.bucketName
         ) {
-          state.s3Instance = new AWS.S3({
-            accessKeyId: ap.accessKeyId,
-            secretAccessKey: ap.secretAccessKey,
-            region: ap.region,
-            signatureVersion: 'v4',
-            s3ForcePathStyle: true,
-            endpoint: `https://s3.${ap.region}.amazonaws.com`
-          })
+          state.s3Instance = markRaw(createS3Client(ap))
         } else {
           state.s3Instance = null
         }
@@ -123,12 +130,18 @@ export default new Vuex.Store({
       })
     },
 
-    async switchProfile({ state, dispatch }, profileId) {
+    async switchProfile({ state, commit, dispatch }, profileId) {
+      if (state.busyOperation || state.hasPendingUploads || state.switchingProfile) throw new Error('请先完成当前操作或清空待上传文件')
       if (!state.profiles.some(p => p.id === profileId)) return
-      await dispatch('persistProfiles', {
-        profiles: state.profiles,
-        activeProfileId: profileId
-      })
+      commit('setProfileSwitching', true)
+      try {
+        await dispatch('persistProfiles', {
+          profiles: state.profiles,
+          activeProfileId: profileId
+        })
+      } finally {
+        commit('setProfileSwitching', false)
+      }
     },
 
     async addProfile({ state, dispatch }) {
@@ -163,6 +176,7 @@ export default new Vuex.Store({
     },
     s3Instance: s => s.s3Instance,
     isConfigured: s => s.isConfigured,
-    configLoaded: s => s.configLoaded
+    configLoaded: s => s.configLoaded,
+    currentDirectory: s => s.browsingPaths[s.activeProfileId] || ''
   }
 })

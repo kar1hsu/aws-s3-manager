@@ -1,109 +1,64 @@
 <template>
   <div class="page-config">
-    <div class="page-head">
-      <h1 class="page-title">连接设置</h1>
-      <p class="page-desc">支持多个 AWS 连接；可选填一个自定义访问域名用于复制公开链接。</p>
-    </div>
+    <PageHeader title="连接设置" />
 
-    <el-card class="config-card" shadow="hover" v-loading="!configLoaded">
-      <div slot="header" class="card-head">
-        <div class="profile-bar">
-          <span class="card-title">AWS S3</span>
-          <el-select
-            v-model="selectedProfileId"
-            placeholder="选择连接"
-            class="profile-select"
-            @change="onSwitchProfile"
-          >
-            <el-option
-              v-for="p in profiles"
-              :key="p.id"
-              :label="p.name || '未命名'"
-              :value="p.id"
-            />
-          </el-select>
-          <el-button size="small" icon="el-icon-plus" @click="onAddProfile">新建连接</el-button>
-          <el-button
-            size="small"
-            icon="el-icon-delete"
-            :disabled="profiles.length <= 1"
-            @click="onRemoveProfile"
-          >删除当前</el-button>
-        </div>
-        <el-button
-          size="small"
-          :loading="testing"
-          :disabled="!canTestForm"
-          @click="testConnection"
-        >
-          <i class="el-icon-connection"></i> 测试连接
-        </el-button>
-      </div>
+    <div class="config-layout" v-loading="!configLoaded || switching">
+      <aside class="config-sidebar">
+        <ProfileList
+          :profiles="profiles"
+          :selected-id="selectedProfileId"
+          :disabled="saving || testing || switching"
+          @select="onSwitchProfile"
+          @add="onAddProfile"
+          @remove="onRemoveProfile"
+        />
+      </aside>
 
-      <el-form ref="form" :model="form" label-width="178px" class="config-form">
-        <el-form-item label="连接名称">
-          <el-input v-model="form.name" placeholder="便于区分，如：生产 Bucket" clearable />
-        </el-form-item>
-        <el-form-item label="Access Key ID" required>
-          <el-input
-            v-model="form.accessKeyId"
-            placeholder="必填"
-            clearable
-            show-password
-          />
-        </el-form-item>
-        <el-form-item label="Secret Access Key" required>
-          <el-input
-            v-model="form.secretAccessKey"
-            type="password"
-            show-password
-            placeholder="必填"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="区域 Region" required>
-          <el-select
-            v-model="form.region"
-            filterable
-            allow-create
-            default-first-option
-            placeholder="选择或输入区域代码"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="r in regionOptions"
-              :key="r.value"
-              :label="r.label"
-              :value="r.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="Bucket 名称" required>
-          <el-input v-model="form.bucketName" placeholder="my-bucket" clearable />
-        </el-form-item>
-        <el-form-item label="自定义访问域名">
-          <el-input
-            v-model="form.cdnBaseUrl"
-            placeholder="例如：https://cdn.example.com 或 CloudFront 域名（可选）"
-            clearable
-          />
-          <div class="form-tip">
-            用于「复制链接」时拼接为「域名/对象 Key」（无预签名参数）。不填则复制标准 S3 对象 URL（https://桶.s3.区域.amazonaws.com/…）。仅支持填写一个基础 URL。
+      <section class="connection-editor" aria-label="连接配置">
+        <div class="editor-heading">
+          <div>
+            <h2>{{ form.name || '新连接' }}</h2>
           </div>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="saving" @click="saveConfig">
-            保存当前连接
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+        </div>
+
+        <ConnectionForm
+          :model-value="form"
+          :regions="regionOptions"
+          :disabled="saving || testing || switching"
+          @update:model-value="updateForm"
+          @save="saveConfig"
+        />
+
+        <div class="editor-actions">
+          <div class="save-state" :class="{ 'is-dirty': isDirty, 'is-success': testResult && testResult.success, 'is-error': testResult && !testResult.success }" aria-live="polite">
+            <template v-if="testResult">
+              <el-icon><CircleCheck v-if="testResult.success" /><Warning v-else /></el-icon>
+              <span>{{ testResult.message }}</span>
+            </template>
+            <template v-else-if="isDirty">
+              <span>有未保存的修改</span>
+            </template>
+          </div>
+          <div class="action-buttons">
+            <el-button :loading="testing" :disabled="!canTestForm || saving || switching" @click="testConnection">测试连接</el-button>
+            <el-button type="primary" :loading="saving" :disabled="!canTestForm || testing || switching" @click="saveConfig">
+              保存并打开文件
+            </el-button>
+          </div>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
 <script>
-import AWS from 'aws-sdk'
+import { HeadBucketCommand } from '@aws-sdk/client-s3'
 import { mapGetters, mapActions } from 'vuex'
+import { createS3Client } from '@/utils/s3-client'
+import { normalizeBaseUrl } from '@/utils/s3-helpers'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import ProfileList from '@/components/config/ProfileList.vue'
+import ConnectionForm from '@/components/config/ConnectionForm.vue'
 
 const REGION_OPTIONS = [
   { value: 'us-east-1', label: '美国东部 (弗吉尼亚) us-east-1' },
@@ -120,6 +75,7 @@ const REGION_OPTIONS = [
 
 export default {
   name: 'ConfigPage',
+  components: { PageHeader, ProfileList, ConnectionForm },
   data() {
     return {
       regionOptions: REGION_OPTIONS,
@@ -134,17 +90,20 @@ export default {
       },
       testing: false,
       saving: false,
-      switching: false
+      switching: false,
+      testResult: null,
+      savedSnapshot: ''
     }
   },
   computed: {
     ...mapGetters(['profiles', 'activeProfileId', 'configLoaded', 'activeProfile']),
+    isDirty() { return !!this.savedSnapshot && JSON.stringify(this.form) !== this.savedSnapshot },
     canTestForm() {
       return !!(
-        this.form.accessKeyId &&
-        this.form.secretAccessKey &&
-        this.form.region &&
-        this.form.bucketName
+        this.form.accessKeyId.trim() &&
+        this.form.secretAccessKey.trim() &&
+        this.form.region.trim() &&
+        this.form.bucketName.trim()
       )
     }
   },
@@ -153,14 +112,38 @@ export default {
       if (v) this.syncFromStore()
     },
     activeProfileId(v) {
-      if (v && !this.switching) this.selectedProfileId = v
+      if (v && !this.switching) this.syncFromStore()
     }
   },
   mounted() {
     this.selectedProfileId = this.activeProfileId
     this.syncFromStore()
+    window.addEventListener('beforeunload', this.preventUnload)
+  },
+  beforeUnmount() {
+    window.removeEventListener('beforeunload', this.preventUnload)
+  },
+  async beforeRouteLeave(to, from, next) {
+    if (this.saving || this.switching) { next(false); return }
+    next(await this.confirmDiscard())
   },
   methods: {
+    updateForm(value) {
+      this.form = value
+      this.testResult = null
+    },
+    preventUnload(event) {
+      if (this.isDirty) { event.preventDefault(); event.returnValue = '' }
+    },
+    async confirmDiscard() {
+      if (!this.isDirty) return true
+      try {
+        await this.$confirm('当前连接有未保存的修改，是否放弃？', '未保存的修改', {
+          confirmButtonText: '放弃修改', cancelButtonText: '继续编辑', type: 'warning', closeOnHashChange: false
+        })
+        return true
+      } catch (e) { return false }
+    },
     ...mapActions([
       'saveActiveProfile',
       'switchProfile',
@@ -179,9 +162,13 @@ export default {
         bucketName: p.bucketName || '',
         cdnBaseUrl: (p.cdnBaseUrls && p.cdnBaseUrls[0]) || p.url || ''
       }
+      this.savedSnapshot = JSON.stringify(this.form)
+      this.testResult = null
     },
     async onSwitchProfile(id) {
+      if (this.saving || this.testing || this.switching) return
       if (!id || id === this.activeProfileId) return
+      if (!(await this.confirmDiscard())) { this.selectedProfileId = this.activeProfileId; return }
       this.switching = true
       try {
         await this.switchProfile(id)
@@ -194,32 +181,36 @@ export default {
       }
     },
     async onAddProfile() {
+      if (!(await this.confirmDiscard())) return
+      this.switching = true
       try {
         await this.addProfile()
         this.syncFromStore()
         this.$message.success('已添加新连接，请填写后保存')
       } catch (e) {
         this.$message.error(e.message || '添加失败')
+      } finally {
+        this.switching = false
       }
     },
     async onRemoveProfile() {
       try {
-        await this.$confirm('确定删除当前连接配置？', '提示', { type: 'warning' })
+        await this.$confirm('确定删除当前连接配置？未保存的修改将丢弃，Bucket 内的文件不会删除。', '删除连接', { type: 'warning', closeOnHashChange: false })
+        this.switching = true
         await this.removeProfile(this.activeProfileId)
         this.syncFromStore()
         this.$message.success('已删除')
       } catch (e) {
-        if (e !== 'cancel') this.$message.error(e.message || '删除失败')
+        if (e !== 'cancel' && e !== 'close') this.$message.error(e.message || '删除失败')
+      } finally {
+        this.switching = false
       }
     },
     buildS3() {
-      return new AWS.S3({
-        accessKeyId: this.form.accessKeyId,
-        secretAccessKey: this.form.secretAccessKey,
-        region: this.form.region,
-        signatureVersion: 'v4',
-        s3ForcePathStyle: true,
-        endpoint: `https://s3.${this.form.region}.amazonaws.com`
+      return createS3Client({
+        accessKeyId: this.form.accessKeyId.trim(),
+        secretAccessKey: this.form.secretAccessKey.trim(),
+        region: this.form.region.trim()
       })
     },
     async testConnection() {
@@ -228,45 +219,48 @@ export default {
         return
       }
       this.testing = true
+      this.testResult = null
+      let s3
       try {
-        const s3 = this.buildS3()
-        await s3.headBucket({ Bucket: this.form.bucketName }).promise()
+        s3 = this.buildS3()
+        await s3.send(new HeadBucketCommand({ Bucket: this.form.bucketName.trim() }))
+        this.testResult = { success: true, message: '连接成功，Bucket 可访问' }
         this.$message.success('连接成功，可访问该 Bucket')
       } catch (e) {
+        const statusCode = e.$metadata && e.$metadata.httpStatusCode
         const msg =
-          e.code === 'Forbidden' || e.statusCode === 403
+          e.name === 'Forbidden' || statusCode === 403
             ? '无权限访问该 Bucket（403）'
-            : e.code === 'NotFound' || e.statusCode === 404
+            : e.name === 'NotFound' || statusCode === 404
               ? 'Bucket 不存在（404）'
               : e.message || '连接失败'
+        this.testResult = { success: false, message: msg }
         this.$message.error(msg)
       } finally {
+        if (s3) s3.destroy()
         this.testing = false
       }
     },
     async saveConfig() {
-      if (
-        !this.form.accessKeyId ||
-        !this.form.secretAccessKey ||
-        !this.form.region ||
-        !this.form.bucketName
-      ) {
+      if (this.saving) return
+      if (!this.canTestForm) {
         this.$message.warning('请填写 Access Key、Secret、区域与 Bucket')
         return
       }
-      const one = (this.form.cdnBaseUrl || '').trim().replace(/\/$/, '')
-      const cdnBaseUrls = one ? [one] : []
-
       this.saving = true
       try {
+        const one = normalizeBaseUrl(this.form.cdnBaseUrl)
+        const cdnBaseUrls = one ? [one] : []
         await this.saveActiveProfile({
-          name: this.form.name,
-          accessKeyId: this.form.accessKeyId,
-          secretAccessKey: this.form.secretAccessKey,
-          region: this.form.region,
-          bucketName: this.form.bucketName,
+          name: this.form.name.trim(),
+          accessKeyId: this.form.accessKeyId.trim(),
+          secretAccessKey: this.form.secretAccessKey.trim(),
+          region: this.form.region.trim(),
+          bucketName: this.form.bucketName.trim(),
           cdnBaseUrls
         })
+        this.syncFromStore()
+        this.saving = false
         this.$message.success('已保存')
         this.$router.push('/files').catch(() => {})
       } catch (error) {
@@ -281,77 +275,68 @@ export default {
 
 <style scoped>
 .page-config {
-  padding-bottom: 32px;
+  padding-bottom: 8px;
 }
-
-.page-head {
-  margin-bottom: 20px;
+.config-layout {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
 }
-
-.page-title {
-  margin: 0 0 8px;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1a1a1a;
-  letter-spacing: -0.03em;
+.config-sidebar { min-width: 0; border-right: 1px solid var(--line); }
+.connection-editor {
+  min-width: 0;
 }
-
-.page-desc {
+.editor-heading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 17px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.editor-heading > div { min-width: 0; }
+.editor-heading h2 {
   margin: 0;
   font-size: 14px;
-  color: #718096;
+  line-height: 1.4;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
-
-.config-card {
-  border-radius: 14px;
-  border: none;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-}
-
-.config-card >>> .el-card__header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #f0f2f5;
-}
-
-.card-head {
+.editor-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-weight: 600;
-  font-size: 16px;
+  padding: 14px 22px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius) 0;
 }
-
-.profile-bar {
+.save-state {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-.card-title {
-  margin-right: 8px;
-}
-
-.profile-select {
-  width: 200px;
-}
-
-.config-form {
-  max-width: 720px;
-  padding: 8px 0 16px;
-}
-
-.config-form >>> .el-form-item__label {
-  white-space: nowrap;
-  line-height: 36px;
-}
-
-.form-tip {
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--muted);
   font-size: 12px;
-  color: #909399;
   line-height: 1.5;
-  margin-top: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.save-state > .el-icon { flex-shrink: 0; margin-top: 2px; font-size: 14px; }
+.save-state.is-dirty { color: var(--accent); }
+.save-state.is-success { color: var(--success); }
+.save-state.is-error { color: var(--danger); }
+.action-buttons { display: flex; align-items: center; margin-left: auto; white-space: nowrap; }
+@media (max-width: 1050px) {
+  .config-layout { grid-template-columns: minmax(0, 1fr); }
+  .config-sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+  .editor-actions { border-bottom-left-radius: var(--radius); }
+}
+@media (max-width: 640px) {
+  .editor-heading, .editor-actions { padding: 14px 18px; }
+  .action-buttons { width: 100%; }
+  .action-buttons .el-button { flex: 1; padding-left: 12px; padding-right: 12px; }
 }
 </style>

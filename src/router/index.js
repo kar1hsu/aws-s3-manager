@@ -1,11 +1,9 @@
-import Vue from 'vue'
-import VueRouter from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import FileList from '../views/FileList.vue'
 import UploadFile from '../views/UploadFile.vue'
 import Config from '../views/Config.vue'
 import store from '../store'
-
-Vue.use(VueRouter)
 
 const routes = [
   {
@@ -31,25 +29,32 @@ const routes = [
   }
 ]
 
-// Electron 下须用 hash；勿只依赖 IS_ELECTRON（Define 未注入时会误用 history → 白屏）
+// 隔离的 Electron 页面没有 process / require，通过 preload 桥识别桌面环境。
+// file/app 协议也使用 hash，便于独立构建预览与安装包回归。
 const isElectron =
-  typeof process !== 'undefined' &&
-  process.versions &&
-  !!process.versions.electron
+  typeof window !== 'undefined' && (
+    !!window.electron?.config ||
+    ['app:', 'file:'].includes(window.location.protocol)
+  )
 
-const router = new VueRouter({
-  mode: isElectron || process.env.IS_ELECTRON ? 'hash' : 'history',
+const router = createRouter({
+  history: isElectron || process.env.IS_ELECTRON ? createWebHashHistory() : createWebHistory(),
   routes
 })
 
 router.beforeEach(async (to, from, next) => {
+  if (store.state.switchingProfile) {
+    ElMessage.info('正在切换配置，请稍候')
+    next(false)
+    return
+  }
   const requiresConfig = to.matched.some(record => record.meta.requiresConfig)
   if (requiresConfig) {
     if (!store.getters.configLoaded) {
       await store.dispatch('loadAwsConfig')
     }
     if (!store.getters.isConfigured) {
-      Vue.prototype.$message.warning('请先完成AWS配置')
+      ElMessage.warning('请先完成 AWS 配置')
       next({ path: '/config' })
       return
     }
@@ -57,4 +62,4 @@ router.beforeEach(async (to, from, next) => {
   next()
 })
 
-export default router 
+export default router
